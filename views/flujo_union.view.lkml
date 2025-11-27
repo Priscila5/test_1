@@ -1,50 +1,40 @@
 view: flujo_union {
   derived_table: {
-    sql: SELECT 'EU' AS partner, Year AS year, Time_ID AS time_id, 'Investment (USD)' AS investment_usd
-    FROM `mercadoseeuuvschina100.Flujo_EU_a_M`
-    UNION ALL
-    SELECT 'CH' AS partner, Year, Time_ID, 'Investment (USD)' AS investment_usd
-    FROM `mercadoseeuuvschina100.Flujo_China_a_M`
-    ;;
+    sql:
+      SELECT
+        'EU'   AS partner,
+        Year   AS year,
+        Time_ID AS time_id,
+        CAST(Investment__USD_ AS NUMERIC) AS investment_usd
+      FROM `mercadoseeuuvschina100.Flujo_EU_a_M`
+      UNION ALL
+      SELECT
+        'CH'   AS partner,
+        Year, Time_ID,
+        CAST(Investment__USD_ AS NUMERIC) AS investment_usd
+      FROM `mercadoseeuuvschina100.Flujo_China_a_M` ;;
   }
 
-  dimension: partner {
-    type: string
-    sql: ${TABLE}.partner;;
-  }
-
-  dimension: year {
-    type: number
-    sql: ${TABLE}.year ;;
-  }
-
-  dimension: time_id {
-    type: number
-    sql: ${TABLE}.time_id;;
-  }
-
-  dimension: investment_usd {
-    type: number
-    sql: ${TABLE}.investment_usd ;;
-  }
-
-  parameter: p_partner {
-    label: "Socio"
-    default_value: "ALL"
+  parameter: p_partner { label: "Socio" default_value: "ALL"
     allowed_value: {label: "Todos" value: "ALL"}
-    allowed_value: {label: "EE.UU" value: "EU"}
-    allowed_value: {label: "China" value: "CH"}
+    allowed_value: {label: "EE.UU." value: "EU"}
+    allowed_value: {label: "China"  value: "CH"}
   }
-
-  dimension:  es_partner_sel{
+  dimension: es_partner_sel {
     type: yesno
     hidden: yes
-    sql: CASE WHEN {% parameter p_partner %} = 'ALL' OR ${partner} = {% parameter p_partner %} THEN TRUE
-    ELSE FALSE
-    END;;
+    sql: {% if p_partner._parameter_value == 'ALL' %} TRUE
+      {% else %} ${partner} = {% parameter p_partner %} {% endif %} ;;
   }
 
+  # campos
+  dimension: partner        { type: string sql: ${TABLE}.partner ;; }
+  dimension: year           { type: number sql: ${TABLE}.year ;; }
+  dimension: time_id        { type: number sql: ${TABLE}.time_id ;; }
+  dimension: investment_usd { type: number sql: ${TABLE}.investment_usd ;; }
+
   dimension_group: anio {
+
     type: time
     timeframes: [year]
     convert_tz: no
@@ -53,7 +43,12 @@ view: flujo_union {
 
   measure: inv_total {
     type: sum
-    sql: CAST(${investment_usd} AS INT64) ;;
+    sql:
+    CASE
+      WHEN {% parameter p_partner %} = 'ALL' OR ${partner} = {% parameter p_partner %}
+      THEN ${investment_usd}
+      ELSE NULL
+    END ;;
     value_format: "#,##0"
   }
 
